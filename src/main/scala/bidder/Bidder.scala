@@ -14,7 +14,7 @@ import scala.concurrent.Future
 
 //Campaign protocol:
 case class TimeRange(timeStart: Long, timeEnd: Long)
-case class Targeting(cities: List[String], targetedSiteIds: Long)
+case class Targeting(cities: List[String], targetedSiteIds: List[String])
 case class Banner(id: Int, src: String, width: Int, height: Int)
 
 case class Campaign(id: Int, userId: Int, country: String, runningTimes: Set[TimeRange], targeting: Targeting, banners: List[Banner], bid: Double)
@@ -37,6 +37,7 @@ case class BidResponse(id: String, bidRequestId: String, price: Double, adid: Op
 
 /**
   * Based on the code found: https://groups.google.com/forum/#!topic/spray-user/RkIwRIXzDDc
+  * For processing JSON
   */
 class EnumJsonConverter[T <: scala.Enumeration](enu: T) extends RootJsonFormat[T#Value] {
   override def write(obj: T#Value): JsValue = JsString(obj.toString)
@@ -57,6 +58,19 @@ trait BidderJsonProtocol extends DefaultJsonProtocol {
 object Bidder extends App with BidderJsonProtocol {
   implicit val system = ActorSystem("Bidder API")
   implicit val meterializer = ActorMaterializer()
+
+  // Data feed
+  val cityList = List("Dhaka", "Rajshahi", "Chattagram")
+  val siteList = List("prothomalo.com", "jobs.bdjobs.com", "cricinfo.com", "cricbuzz.com")
+  val simpleTime = TimeRange(1526320800, 1527703200)
+  val simpleTargeting = Targeting(cityList, siteList)
+  val simpleBanner1 = Banner(112, "http://dummyimage.com/300x250", 300, 250)
+  val simpleBanner2 = Banner(113, "http://dummyimage.com/300x100", 300, 100)
+
+  val campaignData = Campaign(223, 12, "Bangladesh", Set(simpleTime), simpleTargeting, List(simpleBanner1, simpleBanner2), 1.23)
+
+  println(campaignData)
+
 
 
   // Server code
