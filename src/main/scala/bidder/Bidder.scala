@@ -35,29 +35,11 @@ case class BidRequest(id: String, imp: Option[List[Impression]], site: Site, use
 // This will return as HTTP JSON response
 case class BidResponse(id: String, bidRequestId: String, price: Double, adid: Option[String], banner: Option[Banner])
 
-/**
-  * Based on the code found: https://groups.google.com/forum/#!topic/spray-user/RkIwRIXzDDc
-  * For processing JSON
-  */
-class EnumJsonConverter[T <: scala.Enumeration](enu: T) extends RootJsonFormat[T#Value] {
-  override def write(obj: T#Value): JsValue = JsString(obj.toString)
 
-  override def read(json: JsValue): T#Value = {
-    json match {
-      case JsString(txt) => enu.withName(txt)
-      case somethingElse => throw DeserializationException(s"Expected a value from enum $enu instead of $somethingElse")
-    }
-  }
-}
-
-trait BidderJsonProtocol extends DefaultJsonProtocol {
-  implicit val bidRequestFormat = new EnumJsonConverter(BidRequest)
-
-}
-
-object Bidder extends App with BidderJsonProtocol {
-  implicit val system = ActorSystem("Bidder API")
+object Bidder extends App {
+  implicit val system = ActorSystem("bid_request")
   implicit val meterializer = ActorMaterializer()
+  import akka.http.scaladsl.server.Directive._
 
   // Data feed
   val cityList = List("Dhaka", "Rajshahi", "Chattagram")
@@ -69,23 +51,10 @@ object Bidder extends App with BidderJsonProtocol {
 
   val campaignData = Campaign(223, 12, "Bangladesh", Set(simpleTime), simpleTargeting, List(simpleBanner1, simpleBanner2), 1.23)
 
-  println(campaignData)
+  println(campaignData.country)
 
 
 
   // Server code
-  implicit val defaultTimeout = Timeout(2 seconds)
-
-  val requestHandler: HttpRequest => Future[HttpResponse] = {
-    case HttpRequest(HttpMethods.POST, Uri.Path("/bid-request"), _, entity, _) =>
-      val strictEntityFuture = entity.toStrict(3 seconds)
-
-    case request: HttpRequest =>
-      request.discardEntityBytes()
-      Future {
-        HttpResponse(status = StatusCodes.NotFound)
-      }
-  }
-
-  Http().bindAndHandleAsync(requestHandler, "localhost", 8080)
+  
 }
