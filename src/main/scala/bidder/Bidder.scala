@@ -1,18 +1,24 @@
 package bidder
 
-import akka.actor.{ActorSystem}
+import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.http.javadsl.server.Route
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.RouteResult.Complete
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
+import bidder.bidderDataMap.getBidderData
 
 import scala.concurrent.duration._
+import akka.pattern.ask
 import spray.json._
 
 import scala.concurrent.Future
 
+case class requestData(name: String, id: Int)
 
-//Campaign protocol:
+// Campaign protocol:
 case class TimeRange(timeStart: Long, timeEnd: Long)
 case class Targeting(cities: List[String], targetedSiteIds: List[String])
 case class Banner(id: Int, src: String, width: Int, height: Int)
@@ -35,11 +41,32 @@ case class BidRequest(id: String, imp: Option[List[Impression]], site: Site, use
 // This will return as HTTP JSON response
 case class BidResponse(id: String, bidRequestId: String, price: Double, adid: Option[String], banner: Option[Banner])
 
+object bidderDataMap {
+  case class getBidderData(bidReq: requestData)
+}
 
-object Bidder extends App {
+class bidderDataMap extends Actor with ActorLogging {
+  import bidderDataMap._
+
+  val bidder = Map[String, requestData]()
+
+  override def receive: Receive = {
+    case getBidderData(bidReq) =>
+      sender() ! bidder.values.toList
+  }
+}
+
+trait ServiceJsonProtoocol extends DefaultJsonProtocol {
+  implicit val customerProtocol = jsonFormat2(requestData)
+}
+
+object Bidder extends App with ServiceJsonProtoocol{
   implicit val system = ActorSystem("bid_request")
   implicit val meterializer = ActorMaterializer()
-  import akka.http.scaladsl.server.Directive._
+  import system.dispatcher
+  import akka.http.scaladsl.server.Directives._
+
+  val dataBiddermap = system.actorOf(Props[bidderDataMap], "bidderDataMap")
 
   // Data feed
   val cityList = List("Dhaka", "Rajshahi", "Chattagram")
@@ -51,10 +78,26 @@ object Bidder extends App {
 
   val campaignData = Campaign(223, 12, "Bangladesh", Set(simpleTime), simpleTargeting, List(simpleBanner1, simpleBanner2), 1.23)
 
-  println(campaignData.country)
+  val uuid = java.util.UUID.randomUUID.toString
 
+  val responseData = BidResponse(uuid, "3dfgfg", campaignData.bid, Option("r"), Option(simpleBanner1))
+
+  // Define common HTTP entity
+  def toHttpEntity(payload: String) = HttpEntity(ContentTypes.`application/json`, payload)
+
+  implicit val timeOut = Timeout(2 seconds)
 
 
   // Server code
-  
+  val httpServerRoute =
+     post {
+       path("bid-request")
+       entity(implicitly[FromRequestUnmarshaller[requestData]]) { request =>
+         complete((dataBiddermap ? getBidderData(request)).map(
+           _ => StatusCodes.OK
+         ))
+       }
+     }
+
+  Http().bindAndHandle(httpServerRoute, "localhost", 8080)
 }
