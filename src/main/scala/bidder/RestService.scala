@@ -28,11 +28,9 @@ case class Impression(id: String, wmin: Option[Int], wmax: Option[Int], w: Optio
 case class BidRequest(id: String, imp: Option[List[Impression]], site: Site, user: Option[User], device: Option[Device])
 
 // BidResponse protocol:
-case class BidResponse(id: String, bidRequestId: String, price: Double, adid: Option[String], banner: Option[Banner])
+case class BidResponse(id: String, bidRequestId: String, price: Double, adid: Option[Int], banner: Option[Banner])
 
 object RestService extends App with Directives with SprayJsonSupport with DefaultJsonProtocol{
-  import DefaultJsonProtocol._
-  import spray.json._
 
   implicit val sys = ActorSystem()
   implicit val mat = ActorMaterializer()
@@ -52,20 +50,9 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
 
   val uuid = java.util.UUID.randomUUID.toString
 
-  val responseData = BidResponse(uuid, "XN2zZQABxJsKK0jU4QnIzw", campaignData.bid, Option("4548"), Option(simpleBanner1))
 
-  //case class Color(name: String, red: Int, green: Int, blue: Int)
 
-//  object MyJsonProtocol extends DefaultJsonProtocol {
-//    implicit val colorFormat = jsonFormat5(responseData)
-//  }
-
-  implicit val bidResponseFormat = jsonFormat5(BidResponse)
-  //import MyJsonProtocol._
   import spray.json._
-  import DefaultJsonProtocol._
-
-  //val json = Color("CadetBlue", 95, 158, 160)
 
   def route: Route = {
     post {
@@ -73,12 +60,13 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
         template: Template =>
           complete {
             if (template.site == "www.bdjobs.com") {
+              val responseData = BidResponse(uuid, template.id, campaignData.bid, Option(campaignData.id), Option(simpleBanner1))
+
+              implicit val bannerFormat = jsonFormat4(Banner)
+              implicit val bidResponseFormat = jsonFormat5(BidResponse)
+
+              // Send response
               responseData.toJson
-              //println(responseData)
-              //val source = """{ "id": "JSON source" }"""
-              //val jsonAst = source.parseJson
-              //jsonAst.toJson
-              //template
             } else {
               StatusCodes.NoContent
             }
