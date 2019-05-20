@@ -1,6 +1,6 @@
 package bidder
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+/*import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.http.javadsl.server.Route
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -25,7 +25,6 @@ case class Banner(id: Int, src: String, width: Int, height: Int)
 
 case class Campaign(id: Int, userId: Int, country: String, runningTimes: Set[TimeRange], targeting: Targeting, banners: List[Banner], bid: Double)
 
-
 // BidRequest protocol:
 case class Geo(country: Option[String], city: Option[String], lat: Option[Double], lon: Option[Double])
 case class User(id: String, geo: Option[Geo])
@@ -36,9 +35,7 @@ case class Impression(id: String, wmin: Option[Int], wmax: Option[Int], w: Optio
 // This class will take POST JSON data and process for internal matching
 case class BidRequest(id: String, imp: Option[List[Impression]], site: Site, user: Option[User], device: Option[Device])
 
-
 // BidResponse protocol:
-// This will return as HTTP JSON response
 case class BidResponse(id: String, bidRequestId: String, price: Double, adid: Option[String], banner: Option[Banner])
 
 object bidderDataMap {
@@ -80,24 +77,23 @@ object Bidder extends App with ServiceJsonProtoocol{
 
   val uuid = java.util.UUID.randomUUID.toString
 
-  val responseData = BidResponse(uuid, "3dfgfg", campaignData.bid, Option("r"), Option(simpleBanner1))
+  val responseData = BidResponse(uuid, "XN2zZQABxJsKK0jU4QnIzw", campaignData.bid, Option("4548"), Option(simpleBanner1))
 
   // Define common HTTP entity
-  def toHttpEntity(payload: String) = HttpEntity(ContentTypes.`application/json`, payload)
+  //def toHttpEntity(payload: String) = HttpEntity(ContentTypes.`application/json`, payload)
 
   implicit val timeOut = Timeout(2 seconds)
 
 
   // Server code
-  val httpServerRoute =
-     post {
-       path("bid-request")
-       entity(implicitly[FromRequestUnmarshaller[requestData]]) { request =>
-         complete((dataBiddermap ? getBidderData(request)).map(
-           _ => StatusCodes.OK
-         ))
-       }
-     }
+  /*val httpServerRoute =
+    post {
+      path("bid-request") {
+        entity(implicitly[FromRequestUnmarshaller[requestData]]) { request =>
+          complete((dataBiddermap ? getBidderData(request)).map(_ => StatusCodes.OK))
+        }
+      }
+    }
 
-  Http().bindAndHandle(httpServerRoute, "localhost", 8080)
-}
+  Http().bindAndHandle(httpServerRoute, "localhost", 8080)*/
+}*/
