@@ -40,7 +40,7 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
 
   // Data feed
   val cityList = List("Dhaka", "Rajshahi", "Chattagram")
-  val siteList = List("prothomalo.com", "jobs.bdjobs.com", "cricinfo.com", "cricbuzz.com")
+  val siteList = List("prothomalo.com", "www.bdjobs.com", "cricinfo.com", "cricbuzz.com")
   val simpleTime = TimeRange(1526320800, 1527703200)
   val simpleTargeting = Targeting(cityList, siteList)
   implicit val simpleBanner1 = Banner(112, "http://dummyimage.com/300x250", 300, 250)
@@ -50,8 +50,6 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
 
   val uuid = java.util.UUID.randomUUID.toString
 
-
-
   import spray.json._
 
   def route: Route = {
@@ -59,7 +57,7 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
       entity(as[Template]) { // unmarshaller applied
         template: Template =>
           complete {
-            if (template.site == "www.bdjobs.com") {
+            if (siteList contains(template.site)) {
               val responseData = BidResponse(uuid, template.id, campaignData.bid, Option(campaignData.id), Option(simpleBanner1))
 
               implicit val bannerFormat = jsonFormat4(Banner)
