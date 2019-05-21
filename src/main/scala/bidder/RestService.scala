@@ -1,5 +1,7 @@
 package bidder
 
+import java.util.Calendar
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -8,10 +10,10 @@ import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.ActorMaterializer
 import spray.json.{DefaultJsonProtocol, JsObject}
 
-case class Template(id: String, w: Int, h: Int, site: String)
+case class Template(id: String, w: Int, h: Int, site: String, country: String, city: String)
 
 // Campaign protocol:
-case class TimeRange(timeStart: Long, timeEnd: Long)
+case class TimeRange(timeStart: String, timeEnd: String)
 case class Targeting(cities: List[String], targetedSiteIds: List[String])
 case class Banner(id: Int, src: String, width: Int, height: Int)
 
@@ -36,15 +38,15 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
   implicit val mat = ActorMaterializer()
   import sys.dispatcher
 
-  implicit val templateFormat = jsonFormat4(Template)
+  implicit val templateFormat = jsonFormat6(Template)
 
   // Data feed
   val cityList = List("Dhaka", "Rajshahi", "Chattagram")
   val siteList = List("prothomalo.com", "www.bdjobs.com", "cricinfo.com", "cricbuzz.com")
-  val simpleTime = TimeRange(1526320800, 1527703200)
+  val simpleTime = TimeRange("5/20/2019 00:00:00", "5/31/2019 23:59:59")
   val simpleTargeting = Targeting(cityList, siteList)
-  implicit val simpleBanner1 = Banner(112, "http://dummyimage.com/300x250", 300, 250)
-  implicit val simpleBanner2 = Banner(113, "http://dummyimage.com/300x100", 300, 100)
+  val simpleBanner1 = Banner(112, "http://dummyimage.com/300x250", 300, 250)
+  val simpleBanner2: Banner = Banner(113, "http://dummyimage.com/300x100", 300, 100)
 
   val campaignData = Campaign(223, 12, "Bangladesh", Set(simpleTime), simpleTargeting, List(simpleBanner1, simpleBanner2), 1.23)
 
@@ -57,8 +59,28 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
       entity(as[Template]) { // unmarshaller applied
         template: Template =>
           complete {
-            if (siteList contains(template.site)) {
-              val responseData = BidResponse(uuid, template.id, campaignData.bid, Option(campaignData.id), Option(simpleBanner1))
+            val responseData = BidResponse(uuid, template.id, campaignData.bid, Option(campaignData.id), Option(simpleBanner1))
+
+            // For time targeting
+            val now = Calendar.getInstance()
+            val currentMinute = now.get(Calendar.DATE)
+            val currentTime = System.currentTimeMillis
+
+            val format = new java.text.SimpleDateFormat("M/dd/yyyy HH:m:ss")
+            val timeStart = format.parse(simpleTime.timeStart).getTime()
+            val timeEnd = format.parse(simpleTime.timeEnd).getTime()
+
+            val t = currentTime match {
+              case x if timeStart until timeEnd contains x => true
+              case _ => false
+            }
+
+            if ((siteList contains(template.site)) &&
+                (campaignData.country == template.country) &&
+                (cityList contains(template.city)) &&
+                (simpleBanner1.width == template.w) &&
+                (simpleBanner1.height == template.h) && t
+            ) {
 
               implicit val bannerFormat = jsonFormat4(Banner)
               implicit val bidResponseFormat = jsonFormat5(BidResponse)
@@ -69,8 +91,6 @@ object RestService extends App with Directives with SprayJsonSupport with Defaul
               StatusCodes.NoContent
             }
 
-            //println(template.site)
-            //template // marshaller applied
           }
       }
     }
